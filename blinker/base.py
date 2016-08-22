@@ -26,6 +26,8 @@ ANY = symbol('ANY')
 ANY.__doc__ = 'Token for "any sender".'
 ANY_ID = 0
 
+Unspecified = symbol('Unspecified')
+
 
 class Signal(object):
     """A notification emitter."""
@@ -33,6 +35,11 @@ class Signal(object):
     #: An :obj:`ANY` convenience synonym, allows ``Signal.ANY``
     #: without an additional import.
     ANY = ANY
+
+    #: If this callable is set, will be invoked with `(receiver, sender,
+    #: kwargs)` for each receiver during :meth:`send` instead of invoking
+    #: reciever functions directly.
+    receiver_adapter = None
 
     @lazy_property
     def receiver_connected(self):
@@ -70,14 +77,21 @@ class Signal(object):
         """
         return Signal(doc="Emitted after a receiver disconnects.")
 
-    def __init__(self, doc=None):
+    def __init__(self, doc=None, receiver_adapter=Unspecified):
         """
         :param doc: optional.  If provided, will be assigned to the signal's
           __doc__ attribute.
 
+        :param receiver_adapter: optional callable. If provided, will be
+          invoked with `receiver, sender, kwargs` for each receiver during
+          :meth:`send` instead of invoking receivers functions directly.
+
+        ... versionadded:: 1.5
         """
         if doc:
             self.__doc__ = doc
+        if receiver_adapter is not Unspecified:
+            self.receiver_adapter = receiver_adapter
         #: A mapping of connected receivers.
         #:
         #: The values of this mapping are not meaningful outside of the
@@ -263,8 +277,13 @@ class Signal(object):
         if not self.receivers:
             return []
         else:
-            return [(receiver, receiver(sender, **kwargs))
-                    for receiver in self.receivers_for(sender)]
+            if self.receiver_adapter is not None:
+                adapt = self.receiver_adapter
+                return [(receiver, adapt(receiver, sender, kwargs))
+                        for receiver in self.receivers_for(sender)]
+            else:
+                return [(receiver, receiver(sender, **kwargs))
+                        for receiver in self.receivers_for(sender)]
 
     def has_receivers_for(self, sender):
         """True if there is probably a receiver for *sender*.

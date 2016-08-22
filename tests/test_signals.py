@@ -417,6 +417,28 @@ def test_decorated_receiver():
     assert sig.receivers
 
 
+def test_adapted_receiver():
+    sentinel = []
+
+    def receiver(sender, **kw):
+        raise AssertionError
+
+    def adapter(fn, sender, kw):
+        assert fn is receiver
+        sentinel.append(kw)
+
+    sig_constructor = blinker.Signal(None, adapter)
+    sig_adhoc = blinker.Signal()
+    sig_adhoc.receiver_adapter = adapter
+
+    for sig in (sig_constructor, sig_adhoc):
+        sig.connect(receiver)
+        del sentinel[:]
+        sig.send()
+        assert sentinel == [{}]
+        sig.disconnect(receiver)
+
+
 def test_no_double_send():
     sentinel = []
     def received(sender):
