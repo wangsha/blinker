@@ -1,6 +1,6 @@
 try:
     from setuptools import setup
-except ImportError:
+except (ImportError, RuntimeError):
     from distutils.core import setup
 
 readme = open('README.md').read()
