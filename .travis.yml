@@ -10,4 +10,7 @@ python:
   - "pypy"
   - "pypy3"
 
+install:
+  - python setup.py install
+
 script: pytest
